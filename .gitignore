@@ -1,0 +1,103 @@
+# Node.js dependencies
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.pnp.*
+.npm
+
+# Build outputs
+/dist/
+/build/
+/public/build/
+/.svelte-kit/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/svelte.config.js
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Backend specific
+/server/dist/
+/api/dist/
+/backend/dist/
+*.sqlite
+*.sqlite3
+*.db
+
+# Testing
+/coverage
+/.nyc_output
+
+# Production
+/production/
+
+# Temporary files
+.tmp/
+.temp/
+.cache/
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Debug tools
+.clinic/
+
+# Dependency directories
+jspm_packages/
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Yarn Integrity file
+.yarn-integrity
+
+# Svelte-specific
+.routify/
+__sapper__/
+
+# TypeScript cache
+*.tsbuildinfo
+next-env.d.ts
+
+# Vercel
+.vercel
+
+# Netlify
+.netlify
+
+# Build outputs
+bundle.js
+bundle.js.map
+/dist/
+frontend/build/*
+frontend/public/build/          
+
+backend/__pycache__/
