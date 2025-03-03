@@ -8,16 +8,13 @@ from pybotx import Bot
 from redis import asyncio as aioredis
 
 from app.api.routers import router
-from app.bot.bot import get_bot
-from app.caching.callback_redis_repo import CallbackRedisRepo
-from app.caching.exception_handlers import PubsubExceptionHandler
 from app.caching.redis_repo import RedisRepo
 from app.db.sqlalchemy import build_db_session_factory, close_db_connections
 from app.resources import strings
 from app.settings import settings
 
 
-async def startup(application: FastAPI, raise_bot_exceptions: bool) -> None:
+async def startup(application: FastAPI) -> None:
     # -- Database --
     db_session_factory = await build_db_session_factory()
 
@@ -28,23 +25,12 @@ async def startup(application: FastAPI, raise_bot_exceptions: bool) -> None:
         **redis_client.connection_pool.connection_kwargs,
     )
     redis_client.connection_pool = pool
-    redis_repo = RedisRepo(redis=redis_client, prefix=strings.BOT_PROJECT_NAME)
+    redis_repo = RedisRepo(redis=redis_client)
 
     # -- Bot --
-    callback_repo = CallbackRedisRepo(redis_client)
-    process_callbacks_task = asyncio.create_task(
-        callback_repo.pubsub.run(exception_handler=PubsubExceptionHandler())
-    )
-    bot = get_bot(callback_repo, raise_exceptions=raise_bot_exceptions)
-
-    await bot.startup()
-
-    bot.state.db_session_factory = db_session_factory
-    bot.state.redis_repo = redis_repo
-
-    application.state.bot = bot
+    application.state.db_session_factory = db_session_factory
     application.state.redis = redis_client
-    application.state.process_callbacks_task = process_callbacks_task
+    application.state.redis_repo = redis_repo
 
 
 async def shutdown(application: FastAPI) -> None:
@@ -66,7 +52,7 @@ async def shutdown(application: FastAPI) -> None:
 def get_application(raise_bot_exceptions: bool = False) -> FastAPI:
     """Create configured server application instance."""
 
-    application = FastAPI(title=strings.BOT_PROJECT_NAME, openapi_url=None)
+    application = FastAPI(title=strings.PROJECT_NAME, openapi_url=None)
 
     application.add_event_handler(
         "startup", partial(startup, application, raise_bot_exceptions)

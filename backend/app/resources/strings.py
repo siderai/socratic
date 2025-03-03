@@ -36,8 +36,7 @@ lookup = TemplateFormatterLookup(
     strict_undefined=True,
 )
 
-BOT_PROJECT_NAME = "bot-example"
-BOT_DISPLAY_NAME = "Bot Example"
+PROJECT_NAME = "socratic-backend"
 
 CHAT_CREATED_TEMPLATE = lookup.get_template("chat_created.txt.mako")
 HELP_COMMAND_MESSAGE_TEMPLATE = lookup.get_template("help.txt.mako")

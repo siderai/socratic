@@ -9,7 +9,6 @@ from sqlalchemy.sql import text
 
 
 
-
 async def check_db_connection(request: Request) -> Optional[str]:
     assert isinstance(request.app.state.bot, Bot)
 
