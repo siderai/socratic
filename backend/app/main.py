@@ -4,7 +4,6 @@ import asyncio
 from functools import partial
 
 from fastapi import FastAPI
-from pybotx import Bot
 from redis import asyncio as aioredis
 
 from app.api.routers import router
@@ -27,20 +26,12 @@ async def startup(application: FastAPI) -> None:
     redis_client.connection_pool = pool
     redis_repo = RedisRepo(redis=redis_client)
 
-    # -- Bot --
     application.state.db_session_factory = db_session_factory
     application.state.redis = redis_client
     application.state.redis_repo = redis_repo
 
 
 async def shutdown(application: FastAPI) -> None:
-    # -- Bot --
-    bot: Bot = application.state.bot
-    await bot.shutdown()
-    process_callbacks_task: asyncio.Task = application.state.process_callbacks_task
-    process_callbacks_task.cancel()
-    await asyncio.gather(process_callbacks_task, return_exceptions=True)
-
     # -- Redis --
     redis_client: aioredis.Redis = application.state.redis
     await redis_client.close()
@@ -49,13 +40,13 @@ async def shutdown(application: FastAPI) -> None:
     await close_db_connections()
 
 
-def get_application(raise_bot_exceptions: bool = False) -> FastAPI:
+def get_application() -> FastAPI:
     """Create configured server application instance."""
 
     application = FastAPI(title=strings.PROJECT_NAME, openapi_url=None)
 
     application.add_event_handler(
-        "startup", partial(startup, application, raise_bot_exceptions)
+        "startup", partial(startup, application)
     )
     application.add_event_handler("shutdown", partial(shutdown, application))
 

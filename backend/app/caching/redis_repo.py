@@ -2,7 +2,7 @@
 
 import hashlib
 import pickle  # noqa: S403
-from typing import Any, Hashable, Optional
+from typing import Any, Hashable
 
 from redis import asyncio as aioredis
 
@@ -11,15 +11,15 @@ class RedisRepo:
     def __init__(
         self,
         redis: aioredis.Redis,
-        prefix: Optional[str] = None,
-        expire: Optional[int] = None,
+        prefix: str | None = None,
+        expire: int | None = None,
     ) -> None:
         self._redis = redis
         self._prefix = prefix
         self._expire = expire
         self._delimiter = "_"
 
-    async def ping(self) -> Optional[str]:
+    async def ping(self) -> str | None:
         try:
             await self._redis.ping()
         except Exception as exc:
@@ -35,7 +35,7 @@ class RedisRepo:
         return pickle.loads(cached_data)  # noqa: S301
 
     async def set(
-        self, key: Hashable, storage_value: Any, expire: Optional[int] = None
+        self, key: Hashable, storage_value: Any, expire: int | None = None
     ) -> None:
         if expire is None:
             expire = self._expire

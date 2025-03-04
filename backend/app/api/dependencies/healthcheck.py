@@ -1,19 +1,13 @@
-"""Bot dependency for healthcheck."""
-
+"""Dependencies for healthcheck."""
 
 from typing import Optional
 
 from fastapi import Depends, Request
-from pybotx import Bot
 from sqlalchemy.sql import text
 
 
-
-async def check_db_connection(request: Request) -> Optional[str]:
-    assert isinstance(request.app.state.bot, Bot)
-
-    bot = request.app.state.bot
-    session_factory = bot.state.db_session_factory
+async def check_db_connection(request: Request) -> str | None:
+    session_factory = request.app.state.db_session_factory
 
     async with session_factory() as db_session:
         try:
@@ -28,10 +22,8 @@ check_db_connection_dependency = Depends(check_db_connection)
 
 
 async def check_redis_connection(request: Request) -> Optional[str]:
-    assert isinstance(request.app.state.bot, Bot)
-
-    bot = request.app.state.bot
-    return await bot.state.redis_repo.ping()
+    redis_repo = request.app.state.redis_repo
+    return await redis_repo.ping()
 
 
 check_redis_connection_dependency = Depends(check_redis_connection)

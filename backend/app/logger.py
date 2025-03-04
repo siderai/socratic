@@ -44,10 +44,8 @@ def setup_logger() -> "Logger":
     if settings.SQL_DEBUG:
         logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
-    # httpx duplicates pybotx logs
+    # httpx logs
     _logger.disable("httpx")
-
-    _logger.enable("pybotx")
 
     # Setup loguru main logger
     _logger.configure(

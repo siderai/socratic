@@ -1,8 +1,9 @@
 """SQLAlchemy helpers."""
 
 from asyncio import current_task
-from typing import Callable
+from typing import Callable, AsyncGenerator
 
+from fastapi import Depends
 from sqlalchemy import MetaData
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -60,3 +61,15 @@ async def verify_db_connection(engine: AsyncEngine) -> None:
 
 async def close_db_connections() -> None:
     await engine.dispose()
+
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Get a database session as a dependency."""
+    from app.main import app
+    
+    session_factory = app.state.db_session_factory
+    session = session_factory()
+    try:
+        yield session
+    finally:
+        await session.close()

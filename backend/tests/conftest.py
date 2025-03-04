@@ -1,34 +1,28 @@
-from datetime import datetime
-from http import HTTPStatus
+"""Test fixtures for the application."""
+
+from datetime import datetime, timedelta
 from typing import Any, AsyncGenerator, Callable, Dict, Generator, List, Optional
 from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 
-import httpx
-import jwt
 import pytest
-import respx
 from alembic import config as alembic_config
 from asgi_lifespan import LifespanManager
-from pybotx import (
-    Bot,
-    BotAccount,
-    Chat,
-    ChatTypes,
-    IncomingMessage,
-    UserDevice,
-    UserSender,
-)
-from pybotx.logger import logger
+from fastapi.testclient import TestClient
+from jose import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.caching.redis_repo import RedisRepo
+from app.db.sqlalchemy import get_db
+from app.db.user.repo import UserRepo
 from app.main import get_application
+from app.services.security import create_access_token
 from app.settings import settings
 
 
 @pytest.fixture
 def db_migrations() -> Generator:
+    """Run database migrations before tests and downgrade after."""
     alembic_config.main(argv=["upgrade", "head"])
     yield
     alembic_config.main(argv=["downgrade", "base"])
@@ -36,6 +30,7 @@ def db_migrations() -> Generator:
 
 @pytest.hookimpl(trylast=True)
 def pytest_collection_modifyitems(items: List[pytest.Function]) -> None:
+    """Add db_migrations fixture to all tests."""
     # We can't use autouse, because it appends fixture to the end
     # but session from db_session fixture must be closed before migrations downgrade
     for item in items:
@@ -43,147 +38,71 @@ def pytest_collection_modifyitems(items: List[pytest.Function]) -> None:
 
 
 @pytest.fixture
-async def db_session(bot: Bot) -> AsyncGenerator[AsyncSession, None]:
-    async with bot.state.db_session_factory() as session:
+async def db_session() -> AsyncGenerator[AsyncSession, None]:
+    """Get a database session."""
+    async with get_db() as session:
         yield session
 
 
 @pytest.fixture
-async def redis_repo(bot: Bot) -> RedisRepo:
-    return bot.state.redis_repo
-
-
-def mock_authorization() -> None:
-    respx.route(method="GET", path__regex="/api/v2/botx/bots/.*/token").mock(
-        return_value=httpx.Response(
-            HTTPStatus.OK,
-            json={
-                "status": "ok",
-                "result": "token",
-            },
-        ),
-    )
+async def redis_repo() -> RedisRepo:
+    """Get a Redis repository."""
+    app = get_application()
+    async with LifespanManager(app):
+        yield app.state.redis_repo
 
 
 @pytest.fixture
-async def bot(
-    respx_mock: Callable[..., Any],  # We can't apply pytest mark to fixture
-) -> AsyncGenerator[Bot, None]:
-    fastapi_app = get_application()
-
-    mock_authorization()
-
-    async with LifespanManager(fastapi_app):
-        built_bot = fastapi_app.state.bot
-
-        built_bot.answer_message = AsyncMock(return_value=uuid4())
-
-        yield built_bot
+def client() -> TestClient:
+    """Get a test client."""
+    return TestClient(get_application())
 
 
 @pytest.fixture
-def bot_id() -> UUID:
-    return settings.BOT_CREDENTIALS[0].id
-
-
-@pytest.fixture
-def host() -> str:
-    return settings.BOT_CREDENTIALS[0].host
-
-
-@pytest.fixture
-def secret_key() -> str:
-    return settings.BOT_CREDENTIALS[0].secret_key
-
-
-@pytest.fixture
-def user_huid() -> UUID:
-    return UUID("cd069aaa-46e6-4223-950b-ccea42b89c06")
-
-
-@pytest.fixture
-def authorization_token_payload(bot_id: UUID, host: str) -> Dict[str, Any]:
+def test_user_data() -> Dict[str, Any]:
+    """Get test user data."""
     return {
-        "aud": [str(bot_id)],
-        "exp": datetime(year=3000, month=1, day=1).timestamp(),
-        "iat": datetime(year=2000, month=1, day=1).timestamp(),
-        "iss": host,
-        "jti": "2uqpju31h6dgv4f41c005e1i",
-        "nbf": datetime(year=2000, month=1, day=1).timestamp(),
+        "id": 1,
+        "email": "test@example.com",
+        "username": "testuser",
+        "password": "testpassword123",
+        "is_active": True,
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
     }
 
 
 @pytest.fixture
-def authorization_header(
-    secret_key: str,
-    authorization_token_payload: Dict[str, Any],
-) -> Dict[str, str]:
-    token = jwt.encode(
-        payload=authorization_token_payload,
-        key=secret_key,
+def access_token(test_user_data: Dict[str, Any]) -> str:
+    """Get a valid access token for the test user."""
+    return create_access_token(
+        subject=test_user_data["id"],
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
-    return {"authorization": f"Bearer {token}"}
 
 
 @pytest.fixture
-def incoming_message_factory(
-    bot_id: UUID,
-    user_huid: UUID,
-    host: str,
-) -> Callable[..., IncomingMessage]:
-    def factory(
-        *,
-        body: str = "",
-        ad_login: Optional[str] = None,
-        ad_domain: Optional[str] = None,
-    ) -> IncomingMessage:
-        return IncomingMessage(
-            bot=BotAccount(
-                id=bot_id,
-                host=host,
-            ),
-            sync_id=uuid4(),
-            source_sync_id=None,
-            body=body,
-            data={},
-            metadata={},
-            sender=UserSender(
-                huid=user_huid,
-                udid=None,
-                ad_login=ad_login,
-                ad_domain=ad_domain,
-                username=None,
-                is_chat_admin=True,
-                is_chat_creator=True,
-                device=UserDevice(
-                    manufacturer=None,
-                    device_name=None,
-                    os=None,
-                    pushes=None,
-                    timezone=None,
-                    permissions=None,
-                    platform=None,
-                    platform_package_id=None,
-                    app_version=None,
-                    locale=None,
-                ),
-            ),
-            chat=Chat(
-                id=uuid4(),
-                type=ChatTypes.PERSONAL_CHAT,
-            ),
-            raw_command=None,
-        )
-
-    return factory
+def expired_token(test_user_data: Dict[str, Any]) -> str:
+    """Get an expired access token for the test user."""
+    return create_access_token(
+        subject=test_user_data["id"],
+        expires_delta=timedelta(seconds=-1),  # Expired token
+    )
 
 
 @pytest.fixture
-def loguru_caplog(
-    caplog: pytest.LogCaptureFixture,
-) -> Generator[pytest.LogCaptureFixture, None, None]:
-    # https://github.com/Delgan/loguru/issues/59
+def auth_headers(access_token: str) -> Dict[str, str]:
+    """Get authorization headers with a valid token."""
+    return {"Authorization": f"Bearer {access_token}"}
 
-    handler_id = logger.add(caplog.handler, format="{message}")
-    yield caplog
-    logger.remove(handler_id)
+
+@pytest.fixture
+def mock_user_repo() -> AsyncMock:
+    """Get a mock user repository."""
+    return AsyncMock(spec=UserRepo)
+
+
+@pytest.fixture
+def user_id() -> int:
+    """Get a test user ID."""
+    return 1
