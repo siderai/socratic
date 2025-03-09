@@ -2,6 +2,7 @@
 
 from asyncio import current_task
 from typing import Callable, AsyncGenerator
+import contextlib
 
 from fastapi import Depends
 from sqlalchemy import MetaData
@@ -66,10 +67,33 @@ async def close_db_connections() -> None:
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Get a database session as a dependency."""
     from app.main import app
-    
     session_factory = app.state.db_session_factory
     session = session_factory()
     try:
         yield session
+    finally:
+        await session.close()
+
+
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    """Get a database session.
+    
+    This function creates a session, yields it, and handles committing or
+    rolling back changes and closing the session.
+    
+    Example:
+        async with get_session() as session:
+            # Use session here
+            # Changes will be committed automatically if no exception occurs
+    """
+    from app.main import app
+    session_factory = app.state.db_session_factory
+    session = session_factory()
+    try:
+        yield session
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
     finally:
         await session.close()

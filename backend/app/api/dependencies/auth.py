@@ -1,14 +1,14 @@
 """Authentication dependencies."""
 
 from datetime import datetime
-from typing import Optional
+from typing import AsyncGenerator
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.sqlalchemy import get_db
+from app.api.dependencies.database import get_db_session
 from app.db.user import UserModel
 from app.db.user.repo import UserRepo, UserRepoError
 from app.schemas.user import TokenPayload, User
@@ -18,17 +18,17 @@ from app.settings import settings
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
-async def get_user_repo(db: AsyncSession = Depends(get_db)) -> UserRepo:
+async def get_user_repo(session: AsyncSession = Depends(get_db_session)) -> UserRepo:
     """
     Get user repository.
     
     Args:
-        db: Database session
+        session: Database session
         
     Returns:
         User repository
     """
-    return UserRepo(session=db)
+    return UserRepo(session=session)
 
 
 async def get_current_user(
@@ -95,7 +95,10 @@ async def get_current_active_user(
     Raises:
         HTTPException: If the user is inactive
     """
-    if not current_user.is_active:
+    # Check if current_user is a dict and access is_active accordingly
+    is_active = current_user.get("is_active") if isinstance(current_user, dict) else current_user.is_active
+    
+    if not is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user"
         )

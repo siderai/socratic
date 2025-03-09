@@ -1,6 +1,6 @@
 """User repository."""
 
-from typing import Self
+from typing import Optional, Self
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -37,13 +37,19 @@ class UserRepo:
 
     def __init__(self: Self, session: AsyncSession) -> None:
         """Initialize repo with CRUD."""
-        self._crud = CRUD(session=session, cls_model=UserModel)
+        self._crud = CRUD(cls_model=UserModel, session=session)
         self._session = session
 
     async def create(self: Self, user_in: UserCreate) -> User:
         """
         Create a new user.
         
+        Args:
+            user_in: User creation data (Pydantic model)
+            
+        Returns:
+            Created user
+            
         Raises:
             UserAlreadyExistsError: If a user with the same email or username already exists.
             UserRepoError: If there's an error during user creation.
@@ -70,10 +76,17 @@ class UserRepo:
         except SQLAlchemyError as e:
             raise UserRepoError(f"Error creating user: {str(e)}") from e
 
-    async def update(self: Self, user_id: int, user_in: Union[UserUpdate, dict]) -> User:
+    async def update(self: Self, user_id: int, user_in: UserUpdate) -> User:
         """
         Update a user.
         
+        Args:
+            user_id: ID of the user to update
+            user_in: User update data (Pydantic model)
+            
+        Returns:
+            Updated user
+            
         Raises:
             UserNotFoundError: If the user with the given ID doesn't exist.
             UserAlreadyExistsError: If the update would create a duplicate email or username.
@@ -85,10 +98,7 @@ class UserRepo:
             if not user:
                 raise UserNotFoundError(f"User with ID {user_id} not found")
             
-            if isinstance(user_in, UserUpdate):
-                user_data = user_in.model_dump(exclude_unset=True)
-            else:
-                user_data = user_in
+            user_data = user_in.model_dump(exclude_unset=True)
             
             # Check for email uniqueness if email is being updated
             if "email" in user_data and user_data["email"] and user_data["email"] != user.email:
@@ -117,6 +127,9 @@ class UserRepo:
         """
         Delete a user.
         
+        Args:
+            user_id: ID of the user to delete
+            
         Raises:
             UserNotFoundError: If the user with the given ID doesn't exist.
             UserRepoError: If there's an error during user deletion.
@@ -131,7 +144,7 @@ class UserRepo:
         except SQLAlchemyError as e:
             raise UserRepoError(f"Error deleting user: {str(e)}") from e
 
-    async def get_by_id(self: Self, user_id: int) -> Optional[User]:
+    async def get_by_id(self: Self, user_id: int) -> User | None:
         """Get user by ID."""
         try:
             user = await self._crud.get_or_none(pkey_val=user_id)
@@ -141,7 +154,7 @@ class UserRepo:
         except SQLAlchemyError as e:
             raise UserRepoError(f"Error getting user by ID: {str(e)}") from e
 
-    async def get_by_email(self: Self, email: str) -> Optional[User]:
+    async def get_by_email(self: Self, email: str) -> User | None:
         """Get user by email."""
         try:
             users = await self._crud.get_by_field(field="email", field_value=email)
@@ -151,7 +164,7 @@ class UserRepo:
         except SQLAlchemyError as e:
             raise UserRepoError(f"Error getting user by email: {str(e)}") from e
 
-    async def get_by_username(self: Self, username: str) -> Optional[User]:
+    async def get_by_username(self: Self, username: str) -> User | None:
         """Get user by username."""
         try:
             users = await self._crud.get_by_field(field="username", field_value=username)
@@ -161,7 +174,7 @@ class UserRepo:
         except SQLAlchemyError as e:
             raise UserRepoError(f"Error getting user by username: {str(e)}") from e
 
-    async def get_all(self: Self) -> List[User]:
+    async def get_all(self: Self) -> list[User]:
         """Get all users."""
         try:
             users_in_db = await self._crud.all()
@@ -173,6 +186,10 @@ class UserRepo:
         """
         Authenticate a user.
         
+        Args:
+            username_or_email: Username or email of the user
+            password: Password of the user
+            
         Returns:
             User: The authenticated user.
             

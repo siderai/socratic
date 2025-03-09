@@ -3,15 +3,14 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.sqlalchemy import get_db
+from app.db.sqlalchemy import get_session
 
 router = APIRouter()
 
 
 @router.get("/healthcheck", tags=["healthcheck"])
-async def healthcheck(db: AsyncSession = Depends(get_db)) -> dict:
+async def healthcheck(session: AsyncSession = Depends(get_session)) -> dict:
     """Check if the service is healthy."""
     # Try to execute a simple query to check database connection
-    await db.execute("SELECT 1")
-    
+    await session.execute("SELECT 1")
     return {"status": "ok"} 

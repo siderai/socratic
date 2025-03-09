@@ -1,7 +1,5 @@
 """Dependencies for healthcheck."""
 
-from typing import Optional
-
 from fastapi import Depends, Request
 from sqlalchemy.sql import text
 
@@ -21,7 +19,7 @@ async def check_db_connection(request: Request) -> str | None:
 check_db_connection_dependency = Depends(check_db_connection)
 
 
-async def check_redis_connection(request: Request) -> Optional[str]:
+async def check_redis_connection(request: Request) -> str | None:
     redis_repo = request.app.state.redis_repo
     return await redis_repo.ping()
 

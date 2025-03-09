@@ -1,6 +1,6 @@
 """Healthcheck service bot."""
 from dataclasses import dataclass
-from typing import Literal, Optional, Union
+from typing import Literal
 
 from pydantic import BaseModel
 

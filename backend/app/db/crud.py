@@ -4,8 +4,7 @@ from typing import Any, TypeVar
 
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.inspection import inspect
-
-from app.db.sqlalchemy import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession
 
 T = TypeVar("T")  # noqa: WPS111
 
@@ -13,7 +12,7 @@ T = TypeVar("T")  # noqa: WPS111
 class CRUD:
     """CRUD operations for models."""
 
-    def __init__(self, session: AsyncSession, cls_model: Any):
+    def __init__(self, cls_model: Any, session: AsyncSession):
         self._session = session
         self._cls_model = cls_model
 

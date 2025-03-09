@@ -13,7 +13,7 @@ from app.resources import strings
 from app.settings import settings
 
 
-async def startup(application: FastAPI) -> None:
+async def startup(app: FastAPI) -> None:
     # -- Database --
     db_session_factory = await build_db_session_factory()
 
@@ -26,14 +26,14 @@ async def startup(application: FastAPI) -> None:
     redis_client.connection_pool = pool
     redis_repo = RedisRepo(redis=redis_client)
 
-    application.state.db_session_factory = db_session_factory
-    application.state.redis = redis_client
-    application.state.redis_repo = redis_repo
+    app.state.db_session_factory = db_session_factory
+    app.state.redis = redis_client
+    app.state.redis_repo = redis_repo
 
 
-async def shutdown(application: FastAPI) -> None:
+async def shutdown(app: FastAPI) -> None:
     # -- Redis --
-    redis_client: aioredis.Redis = application.state.redis
+    redis_client: aioredis.Redis = app.state.redis
     await redis_client.close()
 
     # -- Database --
@@ -43,13 +43,17 @@ async def shutdown(application: FastAPI) -> None:
 def get_application() -> FastAPI:
     """Create configured server application instance."""
 
-    application = FastAPI(title=strings.PROJECT_NAME, openapi_url=None)
+    app = FastAPI(title=strings.PROJECT_NAME, openapi_url=None)
 
-    application.add_event_handler(
-        "startup", partial(startup, application)
+    app.add_event_handler(
+        "startup", partial(startup, app)
     )
-    application.add_event_handler("shutdown", partial(shutdown, application))
+    app.add_event_handler("shutdown", partial(shutdown, app))
 
-    application.include_router(router)
+    app.include_router(router, prefix="/api")
 
-    return application
+    return app
+
+
+# Create a global app instance that can be imported by other modules
+app = get_application()

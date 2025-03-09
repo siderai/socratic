@@ -8,7 +8,6 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import get_user_repo
-from app.db.sqlalchemy import get_db
 from app.db.user.repo import UserRepo, UserAlreadyExistsError, UserRepoError, AuthenticationError
 from app.schemas.user import Token, User, UserCreate
 from app.services.security import create_access_token

@@ -1,12 +1,11 @@
 """User endpoints."""
 
-from typing import Any, List
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import get_current_active_user, get_user_repo
-from app.db.sqlalchemy import get_db
 from app.db.user.repo import UserRepo, UserNotFoundError, UserAlreadyExistsError, UserRepoError
 from app.schemas.user import User, UserUpdate
 
@@ -99,7 +98,7 @@ async def read_user_by_id(
         )
 
 
-@router.get("/", response_model=List[User])
+@router.get("/", response_model=list[User])
 async def read_users(
     skip: int = 0,
     limit: int = 100,
